@@ -53,30 +53,62 @@ const average = (arr) =>
 export default function App() {
   const [movies, setMovies] = useState(tempMovieData);
   const [watched, setWatched] = useState(tempWatchedData);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [type, setType] = useState("");
 
-  useEffect(function () {
-    async function getMovies() {
-      setIsLoading(true);
-      const response = await fetch(
-        "https://www.omdbapi.com/?s=hobbit&apikey=6cf2e016"
-      );
-      const data = await response.json();
-      setMovies(data.Search);
-      setIsLoading(false);
-    }
-    getMovies();
-  }, []);
+  useEffect(
+    function () {
+      async function getMovies() {
+        try {
+          setIsLoading(true);
+          setError("");
+          const response = await fetch(
+            `https://www.omdbapi.com/?s=${query}&type=${type}&apikey=a700128c`
+          );
+
+          const data = await response.json();
+
+          console.log(data);
+
+          if (query.length <= 0) {
+            throw new Error("Please Search a Movie");
+          }
+          if (query.length < 3) {
+            throw new Error("Search Minumum 3 Letters");
+          }
+
+          if (data.Response === "False") {
+            throw new Error(data.Error);
+          }
+
+          setMovies(data.Search);
+        } catch (error) {
+          setError(error.message);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+      getMovies();
+    },
+    [query, type]
+  );
 
   return (
     <>
       <NavBar>
-        <Search />
+        <Search query={query} setQuery={setQuery} />
+        <Type setType={setType} />
         <NumResults movies={movies} />
       </NavBar>
 
       <Main>
-        <Box>{isLoading ? <Loader /> : <MovieList movies={movies} />}</Box>
+        <Box>
+          {isLoading && <Loader />}
+          {!isLoading && !error && <MovieList movies={movies} />}
+          {error && <ErrorMessage message={error} />}
+        </Box>
 
         <Box>
           <WatchedSummary watched={watched} />
@@ -88,7 +120,15 @@ export default function App() {
 }
 
 function Loader() {
-  return <h1 className="loader"> Loading... </h1>;
+  return (
+    <div>
+      <p>Loading .......</p>
+    </div>
+  );
+}
+
+function ErrorMessage({ message }) {
+  return <p className="error">{message}</p>;
 }
 
 function NavBar({ children }) {
@@ -109,9 +149,7 @@ function Logo() {
   );
 }
 
-function Search() {
-  const [query, setQuery] = useState("");
-
+function Search({ query, setQuery }) {
   return (
     <input
       className="search"
@@ -120,6 +158,21 @@ function Search() {
       value={query}
       onChange={(e) => setQuery(e.target.value)}
     />
+  );
+}
+
+function Type({ setType }) {
+  return (
+    <select
+      name="type"
+      id="type"
+      onChange={(e) => setType(e.target.value)}
+      className="search"
+    >
+      <option value="">Select Type</option>
+      <option value="movie"> Movie </option>
+      <option value="series">Series</option>
+    </select>
   );
 }
 
@@ -213,7 +266,7 @@ function WatchedSummary({ watched }) {
           <span>{watched.length} movies</span>
         </p>
         <p>
-          <span>⭐️</span>
+          <span>⭐</span>
           <span>{avgImdbRating}</span>
         </p>
         <p>
@@ -246,7 +299,7 @@ function WatchedMovie({ movie }) {
       <h3>{movie.Title}</h3>
       <div>
         <p>
-          <span>⭐️</span>
+          <span>⭐</span>
           <span>{movie.imdbRating}</span>
         </p>
         <p>
